@@ -1,10 +1,15 @@
 USER=$(shell whoami)
 
 ##
-## Configure the Hadoop classpath for the GCP dataproc environment
+## Configure the Hadoop classpath for the GCP dataproc enviornment
 ##
 
 HADOOP_CLASSPATH=$(shell hadoop classpath)
+
+WordCount1.jar: WordCount1.java
+	javac -classpath $(HADOOP_CLASSPATH) -d ./ WordCount1.java
+	jar cf WordCount1.jar WordCount1*.class	
+	-rm -f WordCount1*.class
 
 prepare:
 	-hdfs dfs -mkdir input
@@ -17,6 +22,11 @@ filesystem:
 	-hdfs dfs -mkdir /user
 	-hdfs dfs -mkdir /user/$(USER)
 
+run: WordCount1.jar
+	-rm -rf output
+	hadoop jar WordCount1.jar WordCount1 input output
+
+
 ##
 ## You may need to change the path for this depending
 ## on your Hadoop / java setup
@@ -24,19 +34,12 @@ filesystem:
 HADOOP_V=3.3.4
 STREAM_JAR = /usr/local/hadoop-$(HADOOP_V)/share/hadoop/tools/lib/hadoop-streaming-$(HADOOP_V).jar
 
-stream-url:
-	-hdfs dfs -rm -r url-output
+stream:
+	-rm -rf stream-output
 	hadoop jar $(STREAM_JAR) \
-	-files UrlMapper.py,UrlReducer.py \
-	-mapper "python3 UrlMapper.py" \
-	-reducer "python3 UrlReducer.py" \
-	-input input -output url-output
-	hdfs dfs -cat url-output/part-00000
+	-mapper Mapper.py \
+	-reducer Reducer.py \
+	-file Mapper.py -file Reducer.py \
+	-input input -output stream-output
 
-time-python:
-	-hdfs dfs -rm -r url-timed
-	time hadoop jar $(STREAM_JAR) \
-	-files UrlMapper.py,UrlReducer.py \
-	-mapper "python3 UrlMapper.py" \
-	-reducer "python3 UrlReducer.py" \
-	-input input -output url-timed
+
